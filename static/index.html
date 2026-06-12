@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ScreenDrop</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0e0f;
+      --surface:   #1a1a1c;
+      --border:    #2a2a2e;
+      --accent:    #4f8ef7;
+      --accent-dim:#1e3a6e;
+      --text:      #e8e8ea;
+      --muted:     #6b6b72;
+      --success:   #3ecf8e;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'Inter', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---- Layout ---- */
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ---- Header ---- */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent-dim);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg { width: 15px; height: 15px; }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+
+    .dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.connecting { background: #f5a623; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ---- Main canvas ---- */
+    main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 0;
+      overflow: hidden;
+    }
+
+    .canvas {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Empty state */
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 56px;
+      height: 56px;
+      border: 1.5px dashed var(--border);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .empty h2 {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .empty p {
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 260px;
+    }
+
+    .empty code {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    /* Image display */
+    .image-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .image-wrap.visible { display: flex; }
+
+    .screenshot {
+      max-width: 100%;
+      max-height: calc(100vh - 180px);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      object-fit: contain;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .screenshot:active { transform: scale(0.99); }
+
+    /* ---- Footer ---- */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 16px;
+    }
+
+    .meta span { display: flex; align-items: center; gap: 5px; }
+
+    .flash {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--success);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .flash.show { opacity: 1; }
+
+    .save-btn {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .save-btn:hover { background: var(--border); border-color: var(--accent); }
+    .save-btn.visible { display: flex; }
+
+    /* New image flash overlay */
+    .new-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--accent);
+      color: white;
+      font-size: 10px;
+      font-family: var(--mono);
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 20px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .new-badge.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+          </svg>
+        </div>
+        ScreenDrop
+      </div>
+      <div class="status">
+        <div class="dot connecting" id="dot"></div>
+        <span id="status-text">connecting</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="canvas">
+        <!-- Empty state -->
+        <div class="empty" id="empty-state">
+          <div class="empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4b4b55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h2>Waiting for a screenshot</h2>
+          <p>Run the clipboard watcher on your laptop, then copy any screenshot with <code>Win+Shift+S</code></p>
+        </div>
+
+        <!-- Image display -->
+        <div class="image-wrap" id="image-wrap">
+          <div style="position:relative; width:100%; display:flex; justify-content:center;">
+            <img class="screenshot" id="screenshot" src="" alt="Latest screenshot" />
+            <div class="new-badge" id="new-badge">new</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="meta">
+        <span id="timestamp">—</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="flash" id="flash">✓ copied</span>
+        <button class="save-btn" id="save-btn" onclick="saveImage()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Save image
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const dot = document.getElementById('dot')
+    const statusText = document.getElementById('status-text')
+    const emptyState = document.getElementById('empty-state')
+    const imageWrap = document.getElementById('image-wrap')
+    const screenshot = document.getElementById('screenshot')
+    const timestamp = document.getElementById('timestamp')
+    const saveBtn = document.getElementById('save-btn')
+    const flash = document.getElementById('flash')
+    const newBadge = document.getElementById('new-badge')
+
+    let reconnectTimer = null
+
+    function connect() {
+      const ws = new WebSocket(`ws://${location.host}/ws`)
+
+      ws.onopen = () => {
+        dot.className = 'dot connected'
+        statusText.textContent = 'connected'
+        clearTimeout(reconnectTimer)
+      }
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'image') {
+          showImage(msg.data, msg.timestamp)
+        }
+      }
+
+      ws.onclose = () => {
+        dot.className = 'dot connecting'
+        statusText.textContent = 'reconnecting'
+        // Auto reconnect every 2 seconds
+        reconnectTimer = setTimeout(connect, 2000)
+      }
+
+      ws.onerror = () => ws.close()
+    }
+
+    function showImage(dataURL, ts) {
+      screenshot.src = dataURL
+      timestamp.textContent = ts
+
+      emptyState.style.display = 'none'
+      imageWrap.classList.add('visible')
+      saveBtn.classList.add('visible')
+
+      // Flash "new" badge
+      newBadge.classList.add('show')
+      setTimeout(() => newBadge.classList.remove('show'), 2000)
+    }
+
+    function saveImage() {
+      const a = document.createElement('a')
+      a.href = screenshot.src
+      a.download = `screenshot-${Date.now()}.png`
+      a.click()
+
+      flash.classList.add('show')
+      setTimeout(() => flash.classList.remove('show'), 1800)
+    }
+
+    connect()
+  </script>
+</body>
+</html>
