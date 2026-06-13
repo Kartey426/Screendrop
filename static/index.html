@@ -40,7 +40,6 @@
       padding: 0 20px;
     }
 
-    /* ---- Header ---- */
     header {
       display: flex;
       align-items: center;
@@ -110,13 +109,11 @@
       50% { opacity: 0.3; }
     }
 
-    /* ---- Main ---- */
     main {
       overflow-y: auto;
       padding: 24px 0;
     }
 
-    /* Empty state */
     .empty {
       display: flex;
       flex-direction: column;
@@ -141,7 +138,6 @@
     }
 
     .empty h2 { font-size: 15px; font-weight: 500; color: var(--text); }
-
     .empty p { font-size: 13px; line-height: 1.6; max-width: 260px; }
 
     .empty code {
@@ -154,7 +150,6 @@
       color: var(--accent);
     }
 
-    /* ---- Gallery grid ---- */
     .gallery {
       display: none;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -212,7 +207,7 @@
     .thumb-seq {
       font-family: var(--mono);
       font-size: 10px;
-      color: var(--accent-dim);
+      color: var(--accent);
       background: rgba(79,142,247,0.1);
       padding: 1px 6px;
       border-radius: 10px;
@@ -237,7 +232,6 @@
 
     .new-badge.show { opacity: 1; transform: translateY(0); }
 
-    /* ---- Lightbox ---- */
     .lightbox {
       display: none;
       position: fixed;
@@ -312,7 +306,6 @@
 
     .lb-close:hover { color: var(--text); }
 
-    /* ---- Footer ---- */
     footer {
       display: flex;
       align-items: center;
@@ -381,7 +374,6 @@
     </footer>
   </div>
 
-  <!-- Lightbox -->
   <div class="lightbox" id="lightbox">
     <button class="lb-close" onclick="closeLightbox()">✕</button>
     <img class="lightbox-img" id="lightbox-img" src="" alt="Screenshot" />
@@ -410,19 +402,19 @@
     const lightboxImg = document.getElementById('lightbox-img')
     const lightboxTime = document.getElementById('lightbox-time')
 
+    const token = new URLSearchParams(window.location.search).get('token')
+
     let lastSeq = -1
     let reconnectTimer = null
     let ws = null
 
     function connect() {
-      ws = new WebSocket(`ws://${location.host}/ws`)
+      ws = new WebSocket(`ws://${location.host}/ws?token=${token}`)
 
       ws.onopen = () => {
         dot.className = 'dot connected'
         statusText.textContent = 'connected'
         clearTimeout(reconnectTimer)
-
-        // tell server what we already have
         ws.send(JSON.stringify({ type: 'hello', lastSeq: lastSeq }))
       }
 
@@ -449,9 +441,6 @@
 
       const card = document.createElement('div')
       card.className = 'thumb-card new-card'
-      card.dataset.src = msg.data
-      card.dataset.timestamp = msg.timestamp
-      card.dataset.seq = msg.seq
       setTimeout(() => card.classList.remove('new-card'), 600)
 
       card.innerHTML = `
@@ -464,8 +453,6 @@
       `
 
       card.addEventListener('click', () => openLightbox(msg.data, msg.timestamp))
-
-      // newest first
       gallery.prepend(card)
 
       setTimeout(() => {
@@ -498,17 +485,14 @@
       a.href = lightboxImg.src
       a.download = `screenshot-${Date.now()}.png`
       a.click()
-
       flash.classList.add('show')
       setTimeout(() => flash.classList.remove('show'), 1800)
     }
 
-    // close lightbox on backdrop click
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox) closeLightbox()
     })
 
-    // close lightbox on escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox()
     })

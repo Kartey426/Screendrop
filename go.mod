@@ -7,6 +7,7 @@ require github.com/gorilla/websocket v1.5.1
 require (
 	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/go-chi/chi/v5 v5.3.0 // indirect
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	golang.design/x/clipboard v0.8.0 // indirect
 	golang.design/x/x11 v0.2.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20250606033433-dcc06ee1d476 // indirect

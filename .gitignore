@@ -1,7 +1,6 @@
 # Binaries
 *.exe
 *.test
-
 # Environment variables
 .env
 

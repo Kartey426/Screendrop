@@ -98,8 +98,13 @@ func ServeHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/index.html")
 }
 
-func WebSocketHandler(hub *Hub) http.HandlerFunc {
+func WebSocketHandler(hub *Hub, token string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//check for token
+		if r.URL.Query().Get("token") != token {
+            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            return
+        }
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("WebSocket upgrade error:", err)

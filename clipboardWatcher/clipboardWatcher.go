@@ -6,6 +6,7 @@ import(
 	"net/http"
 	"mime/multipart"
 	"bytes"
+	"time"
 )
 
 func WatchClipboard(serverURL string) error {
@@ -14,17 +15,23 @@ func WatchClipboard(serverURL string) error {
 		return err
 	}
 	ch := clipboard.Watch(context.TODO())
+	var lastUpload time.Time
 	for data := range ch {
 		switch data.Format {
 		case clipboard.FmtText:
 				println("text:", string(data.Bytes))
 		case clipboard.FmtImage:
+				if time.Since(lastUpload) < 500*time.Millisecond {
+					println("debounced duplicate")
+					continue
+				}
 				println("image bytes:", len(data.Bytes))
 				err := uploadImage(data.Bytes, serverURL)
 				if err != nil {
 					println("upload error:", err.Error())
 				}else {
 					println("image uploaded successfully")
+					lastUpload = time.Now()
 				}
 		}
 	}
