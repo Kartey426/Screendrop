@@ -4,18 +4,39 @@ import (
 	"log"
 	"net/http"
 	"screendrop/handlers"
+	"screendrop/clipboardWatcher"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
 	hub := handlers.NewHub()
 	go hub.Run()
 
-	http.HandleFunc("/", handlers.ServeHome)
-	http.HandleFunc("/upload", handlers.UploadHandler(hub))
-	http.HandleFunc("/ws", handlers.WebSocketHandler(hub))
-	http.HandleFunc("/latest", handlers.LatestImageHandler)
+	// start clipboard watcher in background
+    go func() {
+        if err := clipboardwatcher.WatchClipboard("http://localhost:8080"); err != nil {
+            log.Fatal("clipboard watcher error:", err)
+        }
+    }()
 
-	log.Println("ScreenDrop running on http://0.0.0.0:8080")
-	log.Println("Open http://<your-laptop-ip>:8080 on your tablet")
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
+	r := chi.NewRouter()
+		
+    // middleware
+    r.Use(middleware.Logger)
+    r.Use(middleware.Recoverer)
+    r.Use(middleware.RequestID)
+
+    // routes
+	r.Post("/test", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("test hit")
+		w.Write([]byte("ok"))
+	})
+    r.Get("/", handlers.ServeHome)
+    r.Post("/upload", handlers.UploadHandler(hub))
+    r.Get("/ws", handlers.WebSocketHandler(hub))
+    r.Get("/latest", handlers.LatestImageHandler)
+
+    log.Println("ScreenDrop running on http://0.0.0.0:8080")
+    log.Fatal(http.ListenAndServe("0.0.0.0:8080", r))
 }

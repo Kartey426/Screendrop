@@ -31,12 +31,11 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ---- Layout ---- */
     .app {
       display: grid;
       grid-template-rows: auto 1fr auto;
       height: 100vh;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto;
       padding: 0 20px;
     }
@@ -71,6 +70,21 @@
 
     .logo-icon svg { width: 15px; height: 15px; }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .image-count {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      display: none;
+    }
+
+    .image-count.visible { display: block; }
+
     .status {
       display: flex;
       align-items: center;
@@ -96,22 +110,10 @@
       50% { opacity: 0.3; }
     }
 
-    /* ---- Main canvas ---- */
+    /* ---- Main ---- */
     main {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      overflow-y: auto;
       padding: 24px 0;
-      overflow: hidden;
-    }
-
-    .canvas {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     /* Empty state */
@@ -119,9 +121,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 12px;
       color: var(--muted);
       text-align: center;
+      height: 100%;
+      min-height: 300px;
     }
 
     .empty-icon {
@@ -135,17 +140,9 @@
       margin-bottom: 4px;
     }
 
-    .empty h2 {
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text);
-    }
+    .empty h2 { font-size: 15px; font-weight: 500; color: var(--text); }
 
-    .empty p {
-      font-size: 13px;
-      line-height: 1.6;
-      max-width: 260px;
-    }
+    .empty p { font-size: 13px; line-height: 1.6; max-width: 260px; }
 
     .empty code {
       font-family: var(--mono);
@@ -157,62 +154,128 @@
       color: var(--accent);
     }
 
-    /* Image display */
-    .image-wrap {
+    /* ---- Gallery grid ---- */
+    .gallery {
       display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      width: 100%;
-      height: 100%;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
     }
 
-    .image-wrap.visible { display: flex; }
+    .gallery.visible { display: grid; }
 
-    .screenshot {
-      max-width: 100%;
-      max-height: calc(100vh - 180px);
-      border-radius: 8px;
+    .thumb-card {
+      background: var(--surface);
       border: 1px solid var(--border);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-      object-fit: contain;
+      border-radius: 10px;
+      overflow: hidden;
       cursor: pointer;
-      transition: transform 0.15s;
+      transition: border-color 0.15s, transform 0.15s;
+      position: relative;
     }
 
-    .screenshot:active { transform: scale(0.99); }
+    .thumb-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
 
-    /* ---- Footer ---- */
-    footer {
+    .thumb-card.new-card {
+      border-color: var(--accent);
+      animation: cardflash 0.4s ease;
+    }
+
+    @keyframes cardflash {
+      0% { box-shadow: 0 0 0 0 rgba(79,142,247,0.5); }
+      100% { box-shadow: 0 0 0 8px rgba(79,142,247,0); }
+    }
+
+    .thumb-img {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+      background: var(--bg);
+    }
+
+    .thumb-meta {
+      padding: 8px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 0 16px;
-      border-top: 1px solid var(--border);
     }
 
-    .meta {
+    .thumb-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .thumb-seq {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent-dim);
+      background: rgba(79,142,247,0.1);
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+
+    .new-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--accent);
+      color: white;
+      font-size: 9px;
+      font-family: var(--mono);
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 20px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+
+    .new-badge.show { opacity: 1; transform: translateY(0); }
+
+    /* ---- Lightbox ---- */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .lightbox.open { display: flex; }
+
+    .lightbox-img {
+      max-width: 100%;
+      max-height: calc(100vh - 120px);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      object-fit: contain;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    .lightbox-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lightbox-time {
       font-family: var(--mono);
       font-size: 11px;
       color: var(--muted);
+    }
+
+    .lb-btn {
       display: flex;
-      gap: 16px;
-    }
-
-    .meta span { display: flex; align-items: center; gap: 5px; }
-
-    .flash {
-      font-size: 11px;
-      font-family: var(--mono);
-      color: var(--success);
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .flash.show { opacity: 1; }
-
-    .save-btn {
-      display: none;
       align-items: center;
       gap: 6px;
       background: var(--surface);
@@ -227,31 +290,52 @@
       transition: background 0.15s, border-color 0.15s;
     }
 
-    .save-btn:hover { background: var(--border); border-color: var(--accent); }
-    .save-btn.visible { display: flex; }
+    .lb-btn:hover { background: var(--border); border-color: var(--accent); }
 
-    /* New image flash overlay */
-    .new-badge {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: var(--accent);
-      color: white;
-      font-size: 10px;
+    .lb-close {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: color 0.15s;
+    }
+
+    .lb-close:hover { color: var(--text); }
+
+    /* ---- Footer ---- */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta {
       font-family: var(--mono);
-      font-weight: 500;
-      padding: 3px 8px;
-      border-radius: 20px;
-      opacity: 0;
-      transform: translateY(-4px);
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
+      font-size: 11px;
+      color: var(--muted);
     }
 
-    .new-badge.show {
-      opacity: 1;
-      transform: translateY(0);
+    .flash {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--success);
+      opacity: 0;
+      transition: opacity 0.2s;
     }
+
+    .flash.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -266,116 +350,168 @@
         </div>
         ScreenDrop
       </div>
-      <div class="status">
-        <div class="dot connecting" id="dot"></div>
-        <span id="status-text">connecting</span>
+      <div class="header-right">
+        <span class="image-count" id="image-count"></span>
+        <div class="status">
+          <div class="dot connecting" id="dot"></div>
+          <span id="status-text">connecting</span>
+        </div>
       </div>
     </header>
 
     <main>
-      <div class="canvas">
-        <!-- Empty state -->
-        <div class="empty" id="empty-state">
-          <div class="empty-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4b4b55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-          </div>
-          <h2>Waiting for a screenshot</h2>
-          <p>Run the clipboard watcher on your laptop, then copy any screenshot with <code>Win+Shift+S</code></p>
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4b4b55" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
         </div>
-
-        <!-- Image display -->
-        <div class="image-wrap" id="image-wrap">
-          <div style="position:relative; width:100%; display:flex; justify-content:center;">
-            <img class="screenshot" id="screenshot" src="" alt="Latest screenshot" />
-            <div class="new-badge" id="new-badge">new</div>
-          </div>
-        </div>
+        <h2>Waiting for a screenshot</h2>
+        <p>Run the clipboard watcher on your laptop, then copy any screenshot with <code>Win+Shift+S</code></p>
       </div>
+
+      <div class="gallery" id="gallery"></div>
     </main>
 
     <footer>
-      <div class="meta">
-        <span id="timestamp">—</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span class="flash" id="flash">✓ copied</span>
-        <button class="save-btn" id="save-btn" onclick="saveImage()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Save image
-        </button>
-      </div>
+      <div class="meta" id="footer-meta">—</div>
+      <span class="flash" id="flash">✓ saved</span>
     </footer>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lb-close" onclick="closeLightbox()">✕</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="Screenshot" />
+    <div class="lightbox-bar">
+      <span class="lightbox-time" id="lightbox-time"></span>
+      <button class="lb-btn" onclick="saveImage()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Save image
+      </button>
+    </div>
   </div>
 
   <script>
     const dot = document.getElementById('dot')
     const statusText = document.getElementById('status-text')
     const emptyState = document.getElementById('empty-state')
-    const imageWrap = document.getElementById('image-wrap')
-    const screenshot = document.getElementById('screenshot')
-    const timestamp = document.getElementById('timestamp')
-    const saveBtn = document.getElementById('save-btn')
+    const gallery = document.getElementById('gallery')
+    const imageCount = document.getElementById('image-count')
+    const footerMeta = document.getElementById('footer-meta')
     const flash = document.getElementById('flash')
-    const newBadge = document.getElementById('new-badge')
+    const lightbox = document.getElementById('lightbox')
+    const lightboxImg = document.getElementById('lightbox-img')
+    const lightboxTime = document.getElementById('lightbox-time')
 
+    let lastSeq = -1
     let reconnectTimer = null
+    let ws = null
 
     function connect() {
-      const ws = new WebSocket(`ws://${location.host}/ws`)
+      ws = new WebSocket(`ws://${location.host}/ws`)
 
       ws.onopen = () => {
         dot.className = 'dot connected'
         statusText.textContent = 'connected'
         clearTimeout(reconnectTimer)
+
+        // tell server what we already have
+        ws.send(JSON.stringify({ type: 'hello', lastSeq: lastSeq }))
       }
 
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data)
         if (msg.type === 'image') {
-          showImage(msg.data, msg.timestamp)
+          addToGallery(msg)
+          lastSeq = msg.seq
         }
       }
 
       ws.onclose = () => {
         dot.className = 'dot connecting'
         statusText.textContent = 'reconnecting'
-        // Auto reconnect every 2 seconds
         reconnectTimer = setTimeout(connect, 2000)
       }
 
       ws.onerror = () => ws.close()
     }
 
-    function showImage(dataURL, ts) {
-      screenshot.src = dataURL
-      timestamp.textContent = ts
-
+    function addToGallery(msg) {
       emptyState.style.display = 'none'
-      imageWrap.classList.add('visible')
-      saveBtn.classList.add('visible')
+      gallery.classList.add('visible')
 
-      // Flash "new" badge
-      newBadge.classList.add('show')
-      setTimeout(() => newBadge.classList.remove('show'), 2000)
+      const card = document.createElement('div')
+      card.className = 'thumb-card new-card'
+      card.dataset.src = msg.data
+      card.dataset.timestamp = msg.timestamp
+      card.dataset.seq = msg.seq
+      setTimeout(() => card.classList.remove('new-card'), 600)
+
+      card.innerHTML = `
+        <img class="thumb-img" src="${msg.data}" alt="Screenshot ${msg.seq}" />
+        <div class="new-badge show" id="badge-${msg.seq}">new</div>
+        <div class="thumb-meta">
+          <span class="thumb-time">${msg.timestamp}</span>
+          <span class="thumb-seq">#${msg.seq}</span>
+        </div>
+      `
+
+      card.addEventListener('click', () => openLightbox(msg.data, msg.timestamp))
+
+      // newest first
+      gallery.prepend(card)
+
+      setTimeout(() => {
+        const badge = document.getElementById(`badge-${msg.seq}`)
+        if (badge) badge.classList.remove('show')
+      }, 2000)
+
+      updateMeta()
+    }
+
+    function updateMeta() {
+      const count = gallery.querySelectorAll('.thumb-card').length
+      imageCount.textContent = `${count} screenshot${count !== 1 ? 's' : ''}`
+      imageCount.classList.add('visible')
+      footerMeta.textContent = `last seq: ${lastSeq}`
+    }
+
+    function openLightbox(src, ts) {
+      lightboxImg.src = src
+      lightboxTime.textContent = ts
+      lightbox.classList.add('open')
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('open')
     }
 
     function saveImage() {
       const a = document.createElement('a')
-      a.href = screenshot.src
+      a.href = lightboxImg.src
       a.download = `screenshot-${Date.now()}.png`
       a.click()
 
       flash.classList.add('show')
       setTimeout(() => flash.classList.remove('show'), 1800)
     }
+
+    // close lightbox on backdrop click
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox()
+    })
+
+    // close lightbox on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox()
+    })
 
     connect()
   </script>
