@@ -1,0 +1,15 @@
+# Binaries
+*.exe
+*.test
+
+# Environment variables
+.env
+
+# VS Code
+.vscode/
+
+#testfiles
+*_test.go
+
+*.py
+screendrop_explained.md

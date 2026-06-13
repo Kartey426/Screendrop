@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
 	"github.com/gorilla/websocket"
+	"screendrop/ringBuffer"
 )
 
 // ---- WebSocket Hub ----
@@ -67,16 +67,22 @@ func (h *Hub) Run() {
 
 // ---- Latest image store ----
 // Holds the most recent screenshot in memory.
-// No DB needed — we only care about the latest one.
+// No DB needed — we only care about the N latest ones.
 
-type ImageStore struct {
-	mu        sync.RWMutex
-	Data      string // base64 encoded image
-	Timestamp string
-	Size      int
+// add this
+type Image struct {
+    Data      string
+    Timestamp string
+    Size      int
+    Seq       int
 }
 
-var Store = &ImageStore{}
+func (img *Image) GetSeq() int {
+    return img.Seq
+}
+
+const BufferSize = 20
+var Store = ringBuffer.NewRingBuffer[*Image](BufferSize)
 
 // ---- Upgrader ----
 
@@ -100,22 +106,39 @@ func WebSocketHandler(hub *Hub) http.HandlerFunc {
 			return
 		}
 
-		hub.register <- conn
+		
+		// read hello from client first
+		_, msg, err := conn.ReadMessage()
+		lastSeq := -1
+		if err == nil {
+			var hello map[string]any
+			if json.Unmarshal(msg, &hello) == nil {
+				if t, ok := hello["type"].(string); ok && t == "hello" {
+					if seq, ok := hello["lastSeq"].(float64); ok {
+						lastSeq = int(seq)
+					}
+				}
+			}
+		}
+		// decide what to send based on lastSeq
+		var toSend []*Image
+		if lastSeq == -1 {
+			toSend = Store.Get()      // fresh connect, send everything
+		} else {
+			toSend = Store.GetSince(lastSeq)  // reconnect, send only new ones
+		}
 
-		// If there's already an image in the store, send it immediately
-		// so the tablet doesn't show a blank screen on connect
-		Store.mu.RLock()
-		if Store.Data != "" {
-			msg := map[string]string{
+		for _, img := range toSend {
+			msg := map[string]any{
 				"type":      "image",
-				"data":      Store.Data,
-				"timestamp": Store.Timestamp,
+				"data":      img.Data,
+				"timestamp": img.Timestamp,
+				"seq":       img.Seq,
 			}
 			b, _ := json.Marshal(msg)
 			conn.WriteMessage(websocket.TextMessage, b)
 		}
-		Store.mu.RUnlock()
-
+		hub.register <- conn
 		// Keep connection alive, detect disconnects
 		go func() {
 			defer func() {
@@ -133,10 +156,10 @@ func WebSocketHandler(hub *Hub) http.HandlerFunc {
 
 func UploadHandler(hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+		// if r.Method != http.MethodPost {
+		// 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		// 	return
+		// }
 
 		// 10MB max
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
@@ -165,17 +188,19 @@ func UploadHandler(hub *Hub) http.HandlerFunc {
 		timestamp := time.Now().Format("3:04:05 PM")
 
 		// Update in-memory store
-		Store.mu.Lock()
-		Store.Data = dataURL
-		Store.Timestamp = timestamp
-		Store.Size = len(data)
-		Store.mu.Unlock()
+		Store.Add(&Image{
+			Data:      dataURL,
+			Timestamp: timestamp,
+			Size:      len(data),
+		})
 
+		img,_ :=Store.Latest()
 		// Broadcast to all connected tablets
-		msg := map[string]string{
+		msg := map[string]any{
 			"type":      "image",
-			"data":      dataURL,
-			"timestamp": timestamp,
+			"data":      img.Data,
+			"timestamp": img.Timestamp,
+			"seq": img.Seq,
 		}
 		b, _ := json.Marshal(msg)
 		hub.broadcast <- b
@@ -188,17 +213,12 @@ func UploadHandler(hub *Hub) http.HandlerFunc {
 }
 
 func LatestImageHandler(w http.ResponseWriter, r *http.Request) {
-	Store.mu.RLock()
-	defer Store.mu.RUnlock()
+    images := Store.Get()
+    if len(images) == 0 {
+        http.Error(w, "No images yet", http.StatusNotFound)
+        return
+    }
 
-	if Store.Data == "" {
-		http.Error(w, "No image yet", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"data":      Store.Data,
-		"timestamp": Store.Timestamp,
-	})
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(images)
 }
