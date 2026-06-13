@@ -1,83 +1,79 @@
 # ScreenDrop
 
-Send screenshots from your Windows laptop to your tablet instantly — no cloud, no app install, works over local WiFi.
+A local network screenshot sharing tool. Take a screenshot on your laptop, see it instantly on your tablet. No cloud, no accounts, no nonsense — just your WiFi.
+
+## What it does
+
+You copy a screenshot with `Win+Shift+S`, it shows up on your tablet in real time. That's it. Useful when you want a second screen for reference material, want to share something with someone next to you, or just don't want to AirDrop / email yourself things.
+
+- **Real time** — screenshots appear on the tablet the moment you copy them
+- **Gallery view** — keeps the last 20 screenshots in a scrollable grid, click any to expand
+- **Reconnect-aware** — if the tablet loses connection it picks up where it left off, no duplicate images
+- **Token secured** — access is gated behind a QR code you scan on first connect, no one else on the network can just open it
 
 ## How it works
 
-```
-Win+Shift+S (screenshot)
-      ↓
-clipboard_watcher.py detects new image
-      ↓
-POSTs to Go server running on your laptop
-      ↓
-Server broadcasts via WebSocket
-      ↓
-Browser tab on tablet receives image instantly
-```
+Three pieces running together:
+
+- **Go server** — runs on your laptop, handles WebSocket connections and image storage
+- **Clipboard watcher** — watches your clipboard for new screenshots and posts them to the server
+- **Tablet UI** — a browser page that connects via WebSocket and displays images as they arrive
+
+Everything stays on your local network. Nothing leaves your machine.
 
 ## Setup
 
-### 1. Start the Go server
+### Requirements
+
+- Go 1.21+
+- Both devices on the same WiFi network
+
+### Run it
 
 ```bash
-go mod tidy
-go run main.go
+git clone https://github.com/Kartey426/Screendrop
+cd Screendrop
+go run .
 ```
 
-You'll see:
-```
-ScreenDrop running on http://0.0.0.0:8080
-Open http://<your-laptop-ip>:8080 on your tablet
-```
+On startup you'll see a QR code printed in the terminal and a token URL like:
 
-### 2. Find your laptop's local IP
-
-Open PowerShell:
 ```
-ipconfig
-```
-Look for `IPv4 Address` under your WiFi adapter — something like `192.168.1.42`
-
-### 3. Open on your tablet
-
-Open a browser on your tablet and go to:
-```
-http://192.168.1.42:8080
-```
-Keep this tab open.
-
-### 4. Start the clipboard watcher
-
-In a separate terminal on your laptop:
-```bash
-pip install pillow requests pywin32
-python clipboard_watcher.py
+http://192.168.x.x:8080?token=abc123...
 ```
 
-### 5. Use it
+Open your tablet's camera, scan the QR code. It'll open the ScreenDrop page in the browser. You're connected.
 
-Press `Win+Shift+S`, select any area — it appears on your tablet in under a second.
+### Take a screenshot
 
-Tap **Save image** on the tablet to download it into your notes app.
+On Windows, press `Win+Shift+S` to copy a screenshot to clipboard. It'll appear on the tablet within a second.
 
 ## Project structure
 
 ```
 screendrop/
-  main.go                  ← server entry point, routes
-  handlers/
-    handlers.go            ← WebSocket hub, upload handler, image store
-  static/
-    index.html             ← tablet UI (served by Go)
-  clipboard_watcher.py     ← Windows clipboard watcher
-  go.mod
+├── main.go               # server entry point, token generation, routing
+├── handlers/
+│   └── handlers.go       # WebSocket hub, upload handler, image store
+├── clipboardWatcher/
+│   └── clipboardWatcher.go  # watches clipboard, posts images to server
+├── ringBuffer/
+│   └── ringBuffer.go     # generic ring buffer for image history
+├── qr/
+│   └── qr.go             # QR code generation for terminal
+└── static/
+    └── index.html        # tablet UI
 ```
 
-## Why this stack
+## Security
 
-- **No DB** — latest image held in memory, that's all we need
-- **WebSocket** — push to tablet the moment image arrives, no polling
-- **Base64 encoding** — image sent inline in the WebSocket message, no second request needed
-- **In-memory store** — if tablet connects after upload, it still gets the latest image immediately
-- **gorilla/websocket** — handles WebSocket protocol, Go's stdlib doesn't include it
+Access is controlled by a random token generated each time the server starts. The token is embedded in the QR code — anyone who scans it can connect, anyone who doesn't can't. The token changes every restart so old QR codes stop working.
+
+It's not end-to-end encrypted and it's not meant to be — this is a local network tool. Don't run it on public WiFi.
+
+## Built with
+
+- [chi](https://github.com/go-chi/chi) — HTTP router and middleware
+- [gorilla/websocket](https://github.com/gorilla/websocket) — WebSocket connections
+- [golang.design/x/clipboard](https://pkg.go.dev/golang.design/x/clipboard) — clipboard watching
+- [go-qrcode](https://github.com/skip2/go-qrcode) — QR code generation
